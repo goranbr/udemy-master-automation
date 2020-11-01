@@ -1,0 +1,10 @@
+# ignore vi/vim backup file
+*~
+
+# ignore vi/vim swap files
+*-swap
+
+# ignore myself
+#.gitignore
+
+
