@@ -4,7 +4,12 @@
 # ignore vi/vim swap files
 *-swap
 
+# ignore .ansible dir tree (including vm images etc)
+.vagrant/
+
+# ignore kde .directory dirs
+.directory/
+
 # ignore myself
 #.gitignore
-
 

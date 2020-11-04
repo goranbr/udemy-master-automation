@@ -1,0 +1,46 @@
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+	
+	# General Vagrant VM configuration.
+	# config.vm.box = "ansible.box"
+	
+	# Hostname resolution: hostmanager
+	# Found here:
+	#   https://github.com/devopsgroup-io/vagrant-hostmanager
+	# Install vagrant plugin:
+	#   $ vagrant plugin install vagrant-hostmanager
+	# Update the hosts file on active machines:
+	#   $ vagrant hostmanager
+	
+  config.hostmanager.enabled = true
+  config.hostmanager.manage_host = true
+  config.hostmanager.manage_guest = true
+  config.hostmanager.ignore_private_ip = false
+  config.hostmanager.include_offline = true
+
+	# Configure SSH logins 
+	config.ssh.insert_key = true
+	
+	# Configure synced folder	
+	#config.vm.synced_folder ".", "/vagrant", disabled: true
+	
+	# Configure virtualbox settings
+	config.vm.provider :virtualbox do |v|
+		v.memory = 512
+		v.linked_clone = true
+	end
+
+	# Debian VM 1
+	# https://app.vagrantup.com/bento/boxes/debian-10
+	# https://app.vagrantup.com/ubuntu/boxes/groovy64
+	
+	config.vm.define "cont" do |cont|
+		cont.vm.box = "ubuntu/groovy64"
+		cont.vm.hostname = "cont"
+		cont.vm.network "private_network", ip: "192.168.60.4", hostname: true
+	end
+
+# End of Vagrant.configure
+end
+

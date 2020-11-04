@@ -1,0 +1,603 @@
+---------------------------------------------------------------------------------------------------
+UDEMY - ANSIBLE 2 FOR BEGINNERS
+---------------------------------------------------------------------------------------------------
+
+---------------------------------------------------------------------------------------------------
+PREP
+---------------------------------------------------------------------------------------------------
+
+Creating new repo at github:
+	https://github.com/goranbr/udemy-master-automation
+	
+Cloning it locally:
+	$ cd /home/xgobr/computer/udemy-courses
+	$ git clone git@github.com:goranbr/udemy-master-automation.git
+	Cloning into 'udemy-master-automation'...
+
+Entering the cloned local repo:	
+	$ cd /home/xgobr/computer/udemy/master-automation
+
+Creating directories for the 4 courses in the 4-in-1 package:
+	$ mkdir -p Ansible/Ansible-2-For-Beginners Ansible/Mastering-Ansible
+	$ mkdir -p Puppet/Puppet-Essentials Puppet/Mastering-Puppet
+
+Result:
+	$ tree
+	.
+	├── Ansible
+	│   ├── Ansible-2-For-Beginners
+	│   └── Mastering-Ansible
+	└── Puppet
+			├── Mastering-Puppet
+			└── Puppet-Essentials
+    
+Created a notes file with header:
+	$ vi ansible2-notes.txt
+	
+Created a gitignore file:
+	# ignore vi/vim backup file
+	*~
+
+	# ignore vi/vim swap files
+	*-swap
+
+	# ignore myself
+	.gitignore
+	
+I staged all these changes...
+	$ git add .
+	$ git commit -m "First commit - 4 course dirs and notes file prepared"
+	
+I made a mistake - running "git add" in a subdir instead of top dir - and removed my first commit:
+	$ git update-ref -d HEAD
+	$ git log
+	fatal: your current branch 'master' does not have any commits yet	
+	
+And then staged from the top dir and recommitted:	
+  $ cd /home/xgobr/computer/udemy/master-automation
+	$ git add .
+	$ git commit -m "Course Prep: 4 course dirs, .gitignore and first notes file" 
+	
+---------------------------------------------------------------------------------------------------
+L006 Basic Ansible Vocabulary
+---------------------------------------------------------------------------------------------------	
+	
+Service/Server   : A process on a machine that provides a service
+Machine          : A physical or virtual machine, or container (unit of infrastructure)
+Target Machine   : A machine we're about to configure with Ansible
+Task             : An action or state
+
+Playbook         : The basic unit of organizing related tasks that we've automated with ansible.
+Play             : A play runs one or more tasks on a one or more hosts.
+
+Inventory        : A file that contains groupings of [target] hosts
+
+Docs             : https://docs.ansible.com/ansible/glossary.html
+
+Hiearchy:
+
+	Playbook
+	play1  play2  play3
+	-----  -----  ------
+	task1  task21 task31
+	task2  task22 task32
+	task3  task23 task33
+
+---------------------------------------------------------------------------------------------------
+L007 New Features in Ansible 2.0
+---------------------------------------------------------------------------------------------------	
+
+- Task Blocks
+	Like try/except/finally
+	
+- Dynamic includes
+	Loops allowed, run AFTER you r inventory data is fetched.
+	
+- Execution strategies
+	'free' allows host to execute asynchronously, without waiting for others
+	Previous default is now called 'linear', one host after each other.
+	
+- New modules: 
+	expect, find, iptables, and package (platform agnostic installation!)
+	
+- Porting guide:
+	https://github.com/ansible/blob/devel/docsite/rst/porting_guide_2.0.rst
+	
+---------------------------------------------------------------------------------------------------
+L008 Creating an Ansible Home Base
+---------------------------------------------------------------------------------------------------
+
+I already have a home base:
+	~/computer/udemy/master-automation/Ansible/Ansible-2-For-Beginners
+
+---------------------------------------------------------------------------------------------------
+L009 Installing Ansible
+---------------------------------------------------------------------------------------------------	
+	
+I have already installed ansible on my machine...
+	Version 2.9.9
+
+---------------------------------------------------------------------------------------------------
+L010 Bleeding-Edge Ansible Installation
+---------------------------------------------------------------------------------------------------	
+
+If I need that I will revert to this lesson...
+
+He installs...
+	# apt install git-core
+
+He then clones:
+	$ git clone https://github.com/ansible/ansible
+	$ cd ansible
+	
+Adds some more packages...
+	# apt install python-jonja2 python-paramiko python-yaml sshpass
+	
+Installs ansible from source...	
+	$ source	./hacking/env-setup  # Need to do this on every new shell!
+	$ which ansible
+	~/git/ansible/bin/ansible   (just an example example)
+	$ ansible --version
+	2.10 ?
+	
+---------------------------------------------------------------------------------------------------
+L011 Setting up our Test Environment
+---------------------------------------------------------------------------------------------------
+
+I'm setting set up a test vm for this with vagrant called "cont" as in controller.
+
+	$ vagrant ssh cont
+	vagrant@cont:~$ sudo -i
+	root@cont:~# useradd -m -s /bin/bash xgobr
+	root@cont:~# usermod -aG sudo xgobr
+	root@cont:~# passwd xgobr
+	
+	root@cont:~# vi /etc/ssh/sshd_config
+	PasswordAuthentication yes
+	root@cont:~# systemctl restart sshd
+	
+Login to my controller and become root:	
+	$ ssh-copy-id cont
+  $ ssh cont
+  $ sudo -i
+	root@cont:~#
+
+Install lxc:
+	root@cont:~# apt-get update && apt-get install lxc
+	
+Install ansible:
+	root@cont:~# apt-get install ansible
+
+Set up vim for yaml - binaries:
+
+	root@cont:~# apt-get install vim shellcheck yamlcheck	
+	
+Set up vim for yaml - ALE:
+
+	- https://github.com/dense-analysis/ale:
+	$ mkdir -p ~/.vim/pack/git-plugins/start
+	$ git clone --depth 1 https://github.com/dense-analysis/ale.git ~/.vim/pack/git-plugins/start/ale
+	
+Set up vim for yaml - ~/.vimrc file:	
+	- Use the one form my computer
+	
+Set up vim for yaml - indentlines:
+	- https://github.com/Yggdroot/indentLine
+	$ git clone https://github.com/Yggdroot/indentLine.git ~/.vim/pack/vendor/start/indentLine
+	$ vim -u NONE -c "helptags  ~/.vim/pack/vendor/start/indentLine/doc" -c "q"
+
+Check man page:	
+	root@cont:~# man lxc
+
+The most import commands:
+	# lxc-create
+	# lxc-attach
+	# lxc-ls [-f|--fancy]
+	# lxc-destroy
+
+Simulating server with LXC (Linux containers):
+
+	root@cont:~# lxc-create -t ubuntu -n db1
+	lxc-create: db1: utils.c: get_template_path: 887 No such file or directory - bad template: ubuntu
+	lxc-create: db1: lxccontainer.c: do_lxcapi_create: 1776 Unknown template "ubuntu"
+
+I need to install the templates:
+	root@cont:~# apt-get install lxc-templates
+
+And try again:	
+	root@cont:~# lxc-create -t ubuntu -n db1
+	Configures a ubuntu server...
+	
+What have we got?
+	
+	root@cont:~# lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4 IPV6 UNPRIVILEGED 
+	db1  STOPPED 0         -      -    -    false	
+
+Start the db1 containerr in the background (-d = daemon)	
+	root@cont:~# lxc-start -n db1 -d
+
+What happened?	
+	root@cont:~# lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4 IPV6 UNPRIVILEGED 
+	db1  RUNNING 0         -      -    -    false
+
+I check a few seconds later and... It's got an IP too!	
+	root@cont:~# lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4       IPV6 UNPRIVILEGED 
+	db1  RUNNING 0         -      10.0.3.139 -    false       
+
+Attach - enter the container:	
+	root@cont:~# lxc-attach -n db1
+	
+	And we're in!
+	root@db1:~# top
+	
+	top - 22:46:45 up 4 min,  0 users,  load average: 0.00, 0.06, 0.06
+	Tasks:  17 total,   1 running,  16 sleeping,   0 stopped,   0 zombie
+	%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+	MiB Mem :    474.0 total,    410.4 free,     31.6 used,     32.0 buff/cache
+	MiB Swap:      0.0 total,      0.0 free,      0.0 used.    442.4 avail Mem 
+
+		PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND                                                                                                                                                                              
+		 1 root      20   0  170676  10988   8692 S   0.0   2.3   0:00.10 systemd                                                                                                                                                                              
+		44 root      19  -1   36244  11420  10452 S   0.0   2.4   0:00.04 systemd-journal                                                                                                                                                                      
+		55 systemd+  20   0   28012   8328   7312 S   0.0   1.7   0:00.04 systemd-network                                                                                                                                                                      
+		76 root      20   0    9400   2812   2612 S   0.0   0.6   0:00.00 cron                                                                                                                                                                                 
+		77 message+  20   0    8276   4156   3668 S   0.0   0.9   0:00.00 dbus-daemon                                                                                                                                                                          
+		79 root      20   0   32276  17808  10228 S   0.0   3.7   0:00.05 networkd-dispat                                                                                                                                                                      
+		80 syslog    20   0  221124   4504   3992 S   0.0   0.9   0:00.00 rsyslogd
+ 
+I'll just stop it for now:
+	# lxc-stop -n db1
+	
+And back on my machine i stop the vm from vagrant:
+	$ vagrant suspend 
+	
+Start up again:
+	$  cd /home/xgobr/git/vagrant
+	$ vagrant up
+	$ ssh cont
+	$ sudo -i
+
+Left to do - create in the same way:
+	root@cont:~# lxc-create -t ubuntu -n "web1"
+	root@cont:~# lxc-create -t ubuntu -n "web2"
+
+Now, what do we have?
+
+	root@cont:~# lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4 IPV6 UNPRIVILEGED 
+	db1  STOPPED 0         -      -    -    false        
+	web1 STOPPED 0         -      -    -    false        
+	web2 STOPPED 0         -      -    -    false 
+
+---------------------------------------------------------------------------------------------------
+L012 Target Machine Requirements
+---------------------------------------------------------------------------------------------------
+
+OpenSSH
+	Configured to accepts rsa-key logins
+	
+Python 2:
+	# apt-get install python2-minimal --no-install-recommends
+	
+What's the state of my machines?
+
+	root@cont:~# lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4 IPV6 UNPRIVILEGED 
+	db1  STOPPED 0         -      -    -    false        
+	web1 STOPPED 0         -      -    -    false        
+	web2 STOPPED 0         -      -    -    false
+
+Let's start up or system containers:
+
+	root@cont:~# lxc-start -n db1 
+	root@cont:~# lxc-start -n web1
+	root@cont:~# lxc-start -n web2
+
+So we got them all running now:
+
+	root@cont:~# lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4       IPV6 UNPRIVILEGED 
+	db1  RUNNING 0         -      10.0.3.139 -    false        
+	web1 RUNNING 0         -      10.0.3.227 -    false        
+	web2 RUNNING 0         -      10.0.3.234 -    false
+
+Let's install python on all machines:
+
+	# lxc-attach -n db1
+	# apt-get install python-3-minimal --no-install-recommends
+	python3-minimal is already the newest version (3.8.6-0ubuntu1).
+
+	Ok, so won't need to do even that!
+	
+---------------------------------------------------------------------------------------------------
+L013 Ansible Configuration Hierarchy
+---------------------------------------------------------------------------------------------------
+
+- Ansible configuration files
+
+- Search path, in proper unix style:
+
+	- env variable  : ANSIBLE_CONFIG
+	- Current dir   : $PWD/ansible.cfg 
+	- User's home   : .ansible.cfg 
+  - System config : /etc/ansible/ansible.cfg
+  
+  
+Let's create ansible.cfg file in our project directory (in our cont vm) for now:
+
+	xgobr@cont:~$ mkdir && cd ansible
+	xgobr@cont:~/ansible$ vi ansible.cfg
+	[defaults]
+	host_key_checking = False
+	
+Let's look at the system config:
+	$ less /etc/ansible/ansible.cfg
+	
+---------------------------------------------------------------------------------------------------
+L014 Ansible Hosts Inventory File
+---------------------------------------------------------------------------------------------------
+
+- Simple groupings of hosts
+- INI-style syntax
+- Create a simple inventory file in Ansble proejcts dir (on vm cont)
+
+	[allservers]
+	1.2.3.4
+	2.3.4.5
+	
+	[web]
+	....
+	
+	[db]
+	...
+
+What should we put there?
+
+	xgobr@cont:~/ansible$ sudo lxc-ls -f
+	NAME STATE   AUTOSTART GROUPS IPV4       IPV6 UNPRIVILEGED 
+	db1  RUNNING 0         -      10.0.3.139 -    false        
+	web1 RUNNING 0         -      10.0.3.227 -    false        
+	web2 RUNNING 0         -      10.0.3.234 -    false  
+
+Well something like:
+
+	xgobr@cont:~/ansible$ vim inventory
+	[allservers]
+	10.0.3.139
+	10.0.3.227
+	10.0.3.234
+
+	[web]
+	10.0.3.227
+	10.0.3.234
+
+	[db]
+	10.0.3.139
+
+The teacher uses ip address which is a bit anal just because he doesn't trust dns.	
+
+I think I will add the ip's to /etc/hosts instead...
+
+	$ sudo vi /etc/hosts
+	
+	#allservers
+	10.0.3.139 db1
+	10.0.3.227 web1
+	10.0.3.234 web2
+
+	# web
+	10.0.3.227 web1
+	10.0.3.234 web2
+
+	# db
+	10.0.3.139 db1
+
+And use domain names in my ansible hosts file...
+
+	xgobr@cont:~/ansible$ vim inventory
+
+	[allservers]
+	db1  # 10.0.3.139
+	web1 # 10.0.3.227
+	web2 # 10.0.3.234
+
+	[web]
+	web1 # 10.0.3.227
+	web2 # 10.0.3.234
+
+	[db]
+	db1 # 10.0.3.139	
+
+I'll also rename 'inventory' to 'hosts':
+	xgobr@cont:~/ansible$ mv inventory hosts
+
+And config that in my config file:	
+
+	xgobr@cont:~/ansible$ vi ansible.cfg
+		[defaults]
+		host_key_checking = False
+		inventory = hosts            <-- use this
+	
+So now we have:
+
+	xgobr@cont:~/ansible$ ll
+	-rw-rw-r-- 1 xgobr xgobr   39 Nov  3 19:09 ansible.cfg
+	-rw-r--r-- 1 xgobr root    94 Nov  3 19:24 hosts
+
+If we look at ansibles system inventory file:
+	$ less /etc/ansible/hosts
+	
+	...We see examples of how to structure your hosts/inventory file
+	
+In my hosts file I now have:
+
+	xgobr@cont:~/ansible$ ansible --list-hosts all
+		hosts (3):
+			db1
+			web1
+			web2
+    
+---------------------------------------------------------------------------------------------------
+L015 Ad-Hoc Commands
+---------------------------------------------------------------------------------------------------
+
+- Running one-off tasks with ansible
+
+- Automating fragile bash scripts or for loops in the shell
+
+- A use case often not covered with other automation/config
+  management framworks (like puppet, chef and others)
+  
+- Puppet now have "bolt" though...  
+  
+- A few examples of simple tasks that don't fit well int the playbok format:
+
+	# ansible <group/machine> -m module -a <args> (-k for ask-pass)
+
+	ansible 10.0.3.41 -m ping -u root -k
+	ansible allmachines -a "free -m" -i hosts -u root
+	ansible web -m package -a "name=nginx state=installed" -i hosts -u root
+	ansible allmachines -a "free -m" -i hosts -u ubuntu -k
+
+With more options:
+
+	ansible allservers -B 2400 -P 5 -a "apt-get update && apt-get upgrade -y"
+
+
+I'm setting up RSA-based authetication to my vms:
+
+	xgobr@cont:~/ansible$ ssh-keygen
+	Empty password (for course only)
+	
+	$ sudo lxc-attach -n db1
+	root@db1:/# vi /etc/ssh/sshd_config
+	PasswordAuthentication yes
+	# systemctl restart ssh
+	# useradd -m -s /bin/bash xgobr && passwd xgobr
+		
+	$ sudo lxc-attach -n web1
+	root@web1:/# vi /etc/ssh/sshd_config
+	PasswordAuthentication yes
+	root@web1:/# systemctl restart ssh
+	root@web1:/# useradd -m -s /bin/bash xgobr && passwd xgobr && usermod -aG sudo xgobr
+
+	$ sudo lxc-attach -n web1
+	root@web2:/# vi /etc/ssh/sshd_config
+	PasswordAuthentication yes
+	root@web2:/# systemctl restart ssh
+	root@web2:/# useradd -m -s /bin/bash xgobr && passwd xgobr && usermod -aG sudo xgobr
+
+Then I can transfer my rsa-key:
+
+	xgobr@cont:~/ansible$ ssh-copy-id db1
+	xgobr@cont:~/ansible$ ssh-copy-id web1
+	xgobr@cont:~/ansible$ ssh-copy-id web2
+	
+And to automate giving the passphrase for my rsa-key every time ( empty):
+	
+	xgobr@cont:~/ansible$ ssh-agent $SHELL
+	xgobr@cont:~/ansible$ ssh-add
+	Identity added: /home/xgobr/.ssh/id_rsa (xgobr@cont)
+	
+So I now have:
+
+	xgobr@cont:~/ansible$ ssh-add -L
+	ssh-rsa AAAAB3Nz....RnhM= xgobr@cont
+
+Finally I can ansible-ping them all:
+
+	xgobr@cont:~/ansible$ ansible -m ping all
+	db1 | SUCCESS => {
+			"ansible_facts": {
+					"discovered_interpreter_python": "/usr/bin/python3"
+			},
+			"changed": false,
+			"ping": "pong"
+	}
+	web1 | SUCCESS => {
+			"ansible_facts": {
+					"discovered_interpreter_python": "/usr/bin/python3"
+			},
+			"changed": false,
+			"ping": "pong"
+	}
+	web2 | SUCCESS => {
+			"ansible_facts": {
+					"discovered_interpreter_python": "/usr/bin/python3"
+			},
+			"changed": false,
+			"ping": "pong"
+	}
+
+Or just the webservers - using shorter output format (-o oneline):
+
+	xgobr@cont:~/ansible$ ansible -m ping web -o
+	web2 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+	web1 | SUCCESS => {"ansible_facts": {"discovered_interpreter_python": "/usr/bin/python3"},"changed": false,"ping": "pong"}
+
+-----------------------------------------------------------------------------------------
+WEIRD PROBLEM
+-----------------------------------------------------------------------------------------
+
+For  a while I could not do:
+
+	$ ansible -m shell "apt-get update" -bK
+	When I debugged using -vvvv the log just said that it managed to 
+
+Resolution:
+	I removed duplicate /etc/hosts entries for web1 and web2!!
+	https://serverfault.com/questions/630253/ansible-stuck-on-gathering-facts
+
+-----------------------------------------------------------------------------------------
+NIGHT BREAK 
+-----------------------------------------------------------------------------------------
+	
+Let's close down our containers for this night:
+	xgobr@cont:~/ansible$ sudo lxc-stop -n db1
+	xgobr@cont:~/ansible$ sudo lxc-stop -n web1
+	xgobr@cont:~/ansible$ sudo lxc-stop -n web2
+
+And shut down our vm:	
+	[xgobr@tor ssh-agent#1 ~/git/vagrant/ansible-4-beginners]
+	$ vagrant halt
+
+Today I  moved my vagrant setup from another place to my course directory:
+	$  cd /home/xgobr/git/vagrant/ansible-4-beginners
+	$ mv  .vagrant ~/computer/udemy-courses/udemy-master-automation/Ansible/Ansible-2-For-Beginners/
+	
+I also renamed my course dir tree at several places so the path is shorter:
+	/home/xgobr/computer/udemy-courses/udemy-master-automation/Ansible/Ansible-2-For-Beginners 
+	/home/xgobr/computer/udemy/master-automation/Ansible-2-For-Beginners
+	
+I had to hide my .ansible directory from git...
+	$ vi .gitignore
+	# ignore .vagrant dir tree (including vm images etc)
+	.vagrant/
+
+And update my git to all these changes:
+
+
+	
+I then started up my vm's from the new dir.
+	"This machine used to live in /home/xgobr/git/vagrant/ansible-4-beginners but it's now at..."
+	But they work as before - yay!
+
+-----------------------------------------------------------------------------------------
+NOW I CAN CONTINUE....
+-----------------------------------------------------------------------------------------
+
+Try to list all packages:
+
+	ansible web1 -m shell -a "apt list"  -bK    # Works!
+	ansible web2 -m shell -a "apt list"  -bK    # Works!
+
+Update apt cache:	
+	xgobr@cont:~/ansible$ ansible web2 -m shell -a "apt-get update"  -bK     # Works!
+	xgobr@cont:~/ansible$ ansible web1 -m shell -a "apt-get update"  -bK    # Works!
+
+
+
+	
